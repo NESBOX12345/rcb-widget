@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+	<category label="30000">
+		<setting id="rcbw_numItems" label="30001" type="slider" default="8" range="1,1,20" option="int"/>
+		<setting id="rcb_romCollectionCommand" label="30002" type="labelenum" values="MOST_PLAYED|RANDOM|RECENTLY_ADDED|FAVORITES" default="MOST_PLAYED"/>
+	</category>
+</settings>
