@@ -7,6 +7,7 @@ import xbmcgui
 import xbmcaddon
 import xbmcplugin
 from platform import platform
+from lib2to3.fixer_util import Comma
 
 
 #access to RCBs database
@@ -26,14 +27,20 @@ language = addon.getLocalizedString
 thisPlugin = int(sys.argv[1])
 
 SETTING_NUMITEMS = 'rcbw_numItems'
-SETTING_RCCOMMAND = 'rcb_romCollectionCommand' 
 
 COMMAND_MOST_PLAYED = 'MOST_PLAYED'
 COMMAND_RANDOM = 'RANDOM'
 COMMAND_RECENTLY_ADDED = 'RECENTLY_ADDED'
 COMMAND_FAVORITES = 'FAVORITES'
-COMMAND_ROMS_PER_PLATFORM = 'ROMS_PER_PLATFORM'
-RANDOM_PLATFORM = 'RANDOM'
+
+RCMODE_ALL = 'All'
+RCMODE_RANDOM = 'Random'
+RCMODE_SELECT = 'Select'
+
+command_friendlynames = {COMMAND_MOST_PLAYED : language(30100),
+                         COMMAND_RANDOM : language(30101),
+                         COMMAND_RECENTLY_ADDED : language(30102),
+                         COMMAND_FAVORITES : language(30103)}
 
 
 class Widget:
@@ -48,21 +55,24 @@ class Widget:
         
         params = parse_qs(urlparse(sys.argv[2]).query)        
         command = self.readParam(params, 'command')
+        rcmode = self.readParam(params, 'rcmode')
+        platformId = self.readParam(params, 'platformId')
+        
+        #build directories
+        if not command:
+            self.rootdirectories()
+        elif not rcmode and not platformId:
+            self.subdirectories(command)
+        elif rcmode == RCMODE_SELECT and not platformId:
+            self.romcollections(command)
             
-        if(command == COMMAND_ROMS_PER_PLATFORM):
-            #Read command from settings. This will be used for the selecten rom collection 
-            command = addon.getSetting(SETTING_RCCOMMAND)
-            xbmc.log('RCB widget: Rom Collection command = %s' %command)
-            
-            platformId = self.readParam(params, 'platformId')
-            if platformId == RANDOM_PLATFORM:
-                platformId = self.getRandomPlatformId()
+        if rcmode == RCMODE_RANDOM:
+            platformId = self.getRandomPlatformId()
             
         limit = int(addon.getSetting(SETTING_NUMITEMS))
-    
-        if not command:
-            self.directories()
-        elif command == COMMAND_MOST_PLAYED:
+            
+        #get content
+        if command == COMMAND_MOST_PLAYED:
             self.getMostPlayedRoms(limit, platformId)
         elif command == COMMAND_RANDOM:
             self.getRandomRoms(limit, platformId)
@@ -74,14 +84,38 @@ class Widget:
         xbmcplugin.endOfDirectory(thisPlugin, succeeded = True, cacheToDisc = False)
     
     
-    def directories(self):
-        xbmc.log('RCB widget: directories')
+    def rootdirectories(self):
+        xbmc.log('RCB widget: rootdirectories')
         
         self.addDirectory(COMMAND_MOST_PLAYED, language(30100))
         self.addDirectory(COMMAND_RANDOM, language(30101))
         self.addDirectory(COMMAND_RECENTLY_ADDED, language(30102))
         self.addDirectory(COMMAND_FAVORITES, language(30103))
-        self.addDirectory(COMMAND_ROMS_PER_PLATFORM, language(30104), RANDOM_PLATFORM)
+        
+        
+    def subdirectories(self, command):
+        xbmc.log('RCB widget: subdirectories')
+        
+        self.addDirectory(command, '%s (%s)' %(language(30104), command_friendlynames[command]), rcmode=RCMODE_ALL)
+        self.addDirectory(command, '%s (%s)' %(language(30105), command_friendlynames[command]), rcmode=RCMODE_RANDOM)
+        self.addDirectory(command, '%s (%s)' %(language(30106), command_friendlynames[command]), rcmode=RCMODE_SELECT)
+        
+    
+    def romcollections(self, command):
+        xbmc.log('RCB widget: romcollections')
+        
+        xbmc.log('RCB widget: read config.xml')
+        config = Config(None)
+        statusOk, errorMsg = config.readXml()
+        xbmc.log('RCB widget: read config.xml done')
+        
+        if(not statusOk):
+            xbmc.log('RCB widget: Error reading config.xml: {0}' % errorMsg)
+            #TODO Error handling
+            return
+        
+        for romCollection in config.romCollections.values():
+            self.addDirectory(command, '%s (%s)' %(romCollection.name, command_friendlynames[command]), platformId=romCollection.id)
         
         
     
@@ -175,6 +209,9 @@ class Widget:
         except Exception, (exc):
             xbmc.log('RCB widget: Error = %s' %str(exc))
         
+        if param == 'None':
+            param = None
+        
         xbmc.log("RCB widget: param %s: %s" %(name, str(param)))
         return param
     
@@ -196,8 +233,8 @@ class Widget:
         return gdb
     
     
-    def addDirectory(self, command, title, rcId=None):
-        parameters = {'command' : command, 'platformId' : rcId}
+    def addDirectory(self, command, title, platformId=None, rcmode=None):
+        parameters = {'command' : command, 'platformId' : platformId, 'rcmode' : rcmode}
         listitem = xbmcgui.ListItem(title)
         listitem.setInfo(type="Program", infoLabels={"Title": title})
         u = sys.argv[0] +'?' +urllib.urlencode(parameters)
@@ -220,6 +257,8 @@ class Widget:
 
         if(not statusOk):
             xbmc.log('RCB widget: Error reading config.xml: {0}' % errorMsg)
+            #TODO: Error handling
+            return
 
         count = 0
         for gameRow in games:

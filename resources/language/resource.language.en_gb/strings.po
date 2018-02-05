@@ -26,10 +26,6 @@ msgctxt "#30001"
 msgid "Number of items"
 msgstr ""
 
-msgctxt "#30002"
-msgid "Rom Collection widget style"
-msgstr ""
-
 # Directories
 msgctxt "#30100"
 msgid "Most played roms"
@@ -48,7 +44,15 @@ msgid "Favorite roms"
 msgstr ""
 
 msgctxt "#30104"
-msgid "Random platform"
+msgid "All Rom Collections"
+msgstr ""
+
+msgctxt "#30105"
+msgid "Random Rom Collection"
+msgstr ""
+
+msgctxt "#30106"
+msgid "Select Rom Collection"
 msgstr ""
 
 
