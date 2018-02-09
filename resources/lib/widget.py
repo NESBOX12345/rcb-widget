@@ -65,21 +65,25 @@ class Widget:
             self.subdirectories(command)
         elif rcmode == RCMODE_SELECT and not platformId:
             self.romcollections(command)
+        
+        gdb = self.openDbConnection()
+        if not gdb:
+            return
             
         if rcmode == RCMODE_RANDOM:
-            platformId = self.getRandomPlatformId()
+            platformId = self.getRandomPlatformId(gdb)
             
         limit = int(addon.getSetting(SETTING_NUMITEMS))
             
         #get content
         if command == COMMAND_MOST_PLAYED:
-            self.getMostPlayedRoms(limit, platformId)
+            self.getMostPlayedRoms(gdb, limit, platformId)
         elif command == COMMAND_RANDOM:
-            self.getRandomRoms(limit, platformId)
+            self.getRandomRoms(gdb, limit, platformId)
         elif command == COMMAND_RECENTLY_ADDED:
-            self.getRecentlyAddedRoms(limit, platformId)
+            self.getRecentlyAddedRoms(gdb, limit, platformId)
         elif command == COMMAND_FAVORITES:
-            self.getFavoriteRoms(limit, platformId)
+            self.getFavoriteRoms(gdb, limit, platformId)
         
         xbmcplugin.endOfDirectory(thisPlugin, succeeded = True, cacheToDisc = False)
     
@@ -119,10 +123,8 @@ class Widget:
         
         
     
-    def getMostPlayedRoms(self, limit, platform=None):
+    def getMostPlayedRoms(self, gdb, limit, platform=None):
         xbmc.log('RCB widget: getMostPlayedRoms')
-
-        gdb = self.openDbConnection()
         
         if not platform:
             query = 'Select * From Game Where launchCount > 0 Order by launchCount desc Limit %s;' %limit
@@ -136,10 +138,8 @@ class Widget:
         self.addGamesToDirectory(gdb, games, limit)
         
     
-    def getRandomRoms(self, limit, platform=None):
+    def getRandomRoms(self, gdb, limit, platform=None):
         xbmc.log('RCB widget: getRandomRoms')
-
-        gdb = self.openDbConnection()
         
         if not platform:
             query = 'SELECT * FROM Game ORDER BY RANDOM() LIMIT %s;' %limit
@@ -153,10 +153,8 @@ class Widget:
         self.addGamesToDirectory(gdb, games, limit)
     
         
-    def getRecentlyAddedRoms(self, limit, platform=None):
+    def getRecentlyAddedRoms(self, gdb, limit, platform=None):
         xbmc.log('RCB widget: getRecentlyAddedRoms')
-
-        gdb = self.openDbConnection()
         
         if not platform:
             query = 'SELECT * FROM Game ORDER BY ID DESC LIMIT %s;' %limit
@@ -170,10 +168,8 @@ class Widget:
         self.addGamesToDirectory(gdb, games, limit)
         
         
-    def getFavoriteRoms(self, limit, platform=None):
+    def getFavoriteRoms(self, gdb, limit, platform=None):
         xbmc.log('RCB widget: getFavoriteRoms')
-
-        gdb = self.openDbConnection()
         
         if not platform:
             query = 'SELECT * FROM Game WHERE isFavorite = 1 LIMIT %s;' %limit
@@ -187,10 +183,9 @@ class Widget:
         self.addGamesToDirectory(gdb, games, limit)
         
     
-    def getRandomPlatformId(self):
+    def getRandomPlatformId(self, gdb):
         xbmc.log('RCB widget: getRandomPlatformId')
         
-        gdb = self.openDbConnection()        
         #HACK: as we have no Platform table we get a random platform from table Game
         query = 'Select Distinct romCollectionId From Game Order by RANDOM() LIMIT 1'
         gameRow = Game(gdb).getObjectByQuery(query, [])
