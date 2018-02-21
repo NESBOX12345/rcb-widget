@@ -2,12 +2,7 @@ import os, sys, re
 import urllib
 from urlparse import *
 
-import xbmc
-import xbmcgui
-import xbmcaddon
-import xbmcplugin
-from platform import platform
-from lib2to3.fixer_util import Comma
+import xbmc, xbmcgui, xbmcaddon, xbmcplugin, xbmcvfs
 
 
 #access to RCBs database
@@ -127,60 +122,60 @@ class Widget:
         xbmc.log('RCB widget: getMostPlayedRoms')
         
         if not platform:
-            query = 'Select * From Game Where launchCount > 0 Order by launchCount desc Limit %s;' %limit
-            games = Game(gdb).getObjectsByQueryNoArgs(query)
+            query = 'Select * From GameView Where launchCount > 0 Order by launchCount desc Limit %s;' %limit
+            games = Game(gdb).getGamesByQueryNoArgs(query)
         else:
-            query = 'Select * From Game Where launchCount > 0 AND romCollectionId = ? Order by launchCount desc Limit %s;' %limit
-            games = Game(gdb).getObjectsByQuery(query, (platform,))
+            query = 'Select * From GameView Where launchCount > 0 AND romCollectionId = ? Order by launchCount desc Limit %s;' %limit
+            games = Game(gdb).getGamesByQuery(query, (platform,))
                 
         xbmc.log('RCB widget: most played games: %s' % games)
         
-        self.addGamesToDirectory(gdb, games, limit)
+        self.addGamesToDirectory(gdb, games, limit, platform)
         
     
     def getRandomRoms(self, gdb, limit, platform=None):
         xbmc.log('RCB widget: getRandomRoms')
         
         if not platform:
-            query = 'SELECT * FROM Game ORDER BY RANDOM() LIMIT %s;' %limit
-            games = Game(gdb).getObjectsByQueryNoArgs(query)
+            query = 'SELECT * FROM GameView ORDER BY RANDOM() LIMIT %s;' %limit
+            games = Game(gdb).getGamesByQueryNoArgs(query)
         else:
-            query = 'SELECT * FROM Game WHERE romCollectionId = ? ORDER BY RANDOM() LIMIT %s;' %limit
-            games = Game(gdb).getObjectsByQuery(query, (platform,))
+            query = 'SELECT * FROM GameView WHERE romCollectionId = ? ORDER BY RANDOM() LIMIT %s;' %limit
+            games = Game(gdb).getGamesByQuery(query, (platform,))
         
         xbmc.log('RCB widget: random games: %s' % games)
         
-        self.addGamesToDirectory(gdb, games, limit)
+        self.addGamesToDirectory(gdb, games, limit, platform)
     
         
     def getRecentlyAddedRoms(self, gdb, limit, platform=None):
         xbmc.log('RCB widget: getRecentlyAddedRoms')
         
         if not platform:
-            query = 'SELECT * FROM Game ORDER BY ID DESC LIMIT %s;' %limit
-            games = Game(gdb).getObjectsByQueryNoArgs(query)
+            query = 'SELECT * FROM GameView ORDER BY ID DESC LIMIT %s;' %limit
+            games = Game(gdb).getGamesByQueryNoArgs(query)
         else:
-            query = 'SELECT * FROM Game WHERE romCollectionId = ? ORDER BY ID DESC LIMIT %s;' %limit
-            games = Game(gdb).getObjectsByQuery(query, (platform,))
+            query = 'SELECT * FROM GameView WHERE romCollectionId = ? ORDER BY ID DESC LIMIT %s;' %limit
+            games = Game(gdb).getGamesByQuery(query, (platform,))
             
         xbmc.log('RCB widget: recently added games: %s' % games)
         
-        self.addGamesToDirectory(gdb, games, limit)
+        self.addGamesToDirectory(gdb, games, limit, platform)
         
         
     def getFavoriteRoms(self, gdb, limit, platform=None):
         xbmc.log('RCB widget: getFavoriteRoms')
         
         if not platform:
-            query = 'SELECT * FROM Game WHERE isFavorite = 1 LIMIT %s;' %limit
-            games = Game(gdb).getObjectsByQueryNoArgs(query)
+            query = 'SELECT * FROM GameView WHERE isFavorite = 1 LIMIT %s;' %limit
+            games = Game(gdb).getGamesByQueryNoArgs(query)
         else:
-            query = 'SELECT * FROM Game WHERE isFavorite = 1 AND romCollectionId = ? LIMIT %s;' %limit
-            games = Game(gdb).getObjectsByQuery(query, (platform,))
+            query = 'SELECT * FROM GameView WHERE isFavorite = 1 AND romCollectionId = ? LIMIT %s;' %limit
+            games = Game(gdb).getGamesByQuery(query, (platform,))
             
         xbmc.log('RCB widget: favorite games: %s' % games)
         
-        self.addGamesToDirectory(gdb, games, limit)
+        self.addGamesToDirectory(gdb, games, limit, platform)
         
     
     def getRandomPlatformId(self, gdb):
@@ -236,14 +231,8 @@ class Widget:
         xbmcplugin.addDirectoryItem(thisPlugin, u, listitem, isFolder=True)
     
         
-    def addGamesToDirectory(self, gdb, games, limit):
+    def addGamesToDirectory(self, gdb, games, limit, platformId):
         xbmc.log('RCB widget: addGamesToDirectory')
-        
-        xbmc.log('RCB widget: cache lookup tables')
-        #cache lookup tables
-        yearDict = helper.cacheYears(gdb)
-        developerDict = helper.cacheDevelopers(gdb)
-        xbmc.log('RCB widget: cache lookup done')
 
         xbmc.log('RCB widget: read config.xml')
         config = Config(None)
@@ -254,57 +243,41 @@ class Widget:
             xbmc.log('RCB widget: Error reading config.xml: {0}' % errorMsg)
             #TODO: Error handling
             return
+        
+        if not platformId:
+            platformId = 0
+        mediaDict = {}
+        mediaDict = helper.cacheMediaPathsForSelection(platformId, mediaDict, config)
 
         count = 0
-        for gameRow in games:
+        for game in games:
 
             count += 1
             try:
-                xbmc.log("RCB widget: Gathering data for rom no %i: %s" % (count, gameRow[util.ROW_NAME]))
+                xbmc.log("RCB widget: Gathering data for rom no %i: %s" % (count, game.name))
 
-                romCollection = config.romCollections[str(gameRow[util.GAME_romCollectionId])]
+                romCollection = config.romCollections[str(game.romCollectionId)]
+                gamenameFromFile = romCollection.getGamenameFromFilename(game.firstRom)
+                mediaPathsDict = mediaDict[str(game.romCollectionId)]
 
                 #get artwork that is chosen to be shown in gamelist
-                files = File(gdb).getFilesByParentIds(gameRow[util.ROW_ID], gameRow[util.GAME_romCollectionId], gameRow[util.GAME_publisherId], gameRow[util.GAME_developerId])
-                fileDict = helper.cacheFiles(files)
-                files = helper.getFilesByControl_Cached(gdb, romCollection.imagePlacingMain.fileTypesForGameList, gameRow[util.ROW_ID], gameRow[util.GAME_publisherId], gameRow[util.GAME_developerId], gameRow[util.GAME_romCollectionId], fileDict)
-                if(files != None and len(files) != 0):
-                    thumb = files[0]
-                else:
-                    thumb = ""
+                thumb = helper.getFileForControl(romCollection.imagePlacingMain.fileTypesForGameList, romCollection, mediaPathsDict, gamenameFromFile, False)
+                fanart = helper.getFileForControl(romCollection.imagePlacingMain.fileTypesForMainViewBackground, romCollection, mediaPathsDict, gamenameFromFile, False)
 
-                files = helper.getFilesByControl_Cached(gdb, romCollection.imagePlacingMain.fileTypesForMainViewBackground, gameRow[util.ROW_ID], gameRow[util.GAME_publisherId], gameRow[util.GAME_developerId], gameRow[util.GAME_romCollectionId], fileDict)
-                if(files != None and len(files) != 0):
-                    fanart = files[0]
-                else:
-                    fanart = ""
-
-                description = gameRow[util.GAME_description]
-                if(description == None):
-                    description = ""
-
-                title = '%s (%s)' %(gameRow[util.ROW_NAME], romCollection.name)
-                year = helper.getPropertyFromCache(gameRow, yearDict, util.GAME_yearId, util.ROW_NAME)
-                developer = helper.getPropertyFromCache(gameRow, developerDict, util.GAME_developerId, util.ROW_NAME)
-                genres = Genre(gdb).getGenresForGame(gameRow[util.ROW_ID])
-                rating = helper.saveReadString(gameRow[util.GAME_rating])
-                votes = helper.saveReadString(gameRow[util.GAME_numVotes])
-                region = helper.saveReadString(gameRow[util.GAME_region])
-                originaltitle = helper.saveReadString(gameRow[util.GAME_originalTitle])
-                playcount = helper.saveReadString(gameRow[util.GAME_launchCount])
+                title = '%s (%s)' %(game.name, romCollection.name)
 
                 infoLabels = infoLabels={"Title": title,
-                                        "Year" : year,
-                                        "Genre" : genres,
-                                        "Studio" : developer,
-                                        "Plot" : description,
-                                        "PlayCount" : playcount,
-                                        "Rating" : rating,
-                                        "Votes" : votes,
-                                        "Country" : region,
-                                        "OriginalTitle" : originaltitle}
+                                        "Year" : game.year,
+                                        "Genre" : game.genre,
+                                        "Studio" : game.developer,
+                                        "Plot" : game.plot,
+                                        "PlayCount" : game.playcount,
+                                        "Rating" : game.rating,
+                                        "Votes" : game.votes,
+                                        "Country" : game.region,
+                                        "OriginalTitle" : game.originalTitle}
                 
-                url = "plugin://script.games.rom.collection.browser/?launchid=%s" %gameRow[util.ROW_ID]
+                url = "plugin://script.games.rom.collection.browser/?launchid=%s" %game.id
                 
                 listitem = xbmcgui.ListItem(title, iconImage=thumb, thumbnailImage=fanart)
                 listitem.setInfo(type="Video", infoLabels=infoLabels)
@@ -315,3 +288,4 @@ class Widget:
                 xbmc.log('RCB widget: Error while getting games for RCB widget: ' + str(exc))
 
         gdb.close()
+        
