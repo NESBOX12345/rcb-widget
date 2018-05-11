@@ -10,6 +10,7 @@ rcbAddon = xbmcaddon.Addon(id='script.games.rom.collection.browser')
 rcbAddonPath = rcbAddon.getAddonInfo('path')
 sys.path.append(os.path.join(rcbAddonPath, "resources", "lib"))
 import util, helper
+import gamedatabase
 from gamedatabase import Game, GameDataBase, File, Genre
 from config import Config
 
@@ -246,38 +247,36 @@ class Widget:
         
         if not platformId:
             platformId = 0
-        mediaDict = {}
-        mediaDict = helper.cacheMediaPathsForSelection(platformId, mediaDict, config)
 
         count = 0
         for game in games:
 
             count += 1
             try:
-                xbmc.log("RCB widget: Gathering data for rom no %i: %s" % (count, game.name))
+                xbmc.log("RCB widget: Gathering data for rom no %i: %s" % (count, game[gamedatabase.ROW_NAME]))
 
-                romCollection = config.romCollections[str(game.romCollectionId)]
-                gamenameFromFile = romCollection.getGamenameFromFilename(game.firstRom)
-                mediaPathsDict = mediaDict[str(game.romCollectionId)]
+                romCollection = config.romCollections[str(game[gamedatabase.GAME_romCollectionId])]
 
                 #get artwork that is chosen to be shown in gamelist
-                thumb = helper.getFileForControl(romCollection.imagePlacingMain.fileTypesForGameList, romCollection, mediaPathsDict, gamenameFromFile, False)
-                fanart = helper.getFileForControl(romCollection.imagePlacingMain.fileTypesForMainViewBackground, romCollection, mediaPathsDict, gamenameFromFile, False)
+                thumb = helper.get_file_for_control_from_db(
+                    romCollection.imagePlacingMain.fileTypesForGameList, game)
+                fanart = helper.get_file_for_control_from_db(
+                    romCollection.imagePlacingMain.fileTypesForMainViewBackground, game)
 
-                title = '%s (%s)' %(game.name, romCollection.name)
+                title = '%s (%s)' %(game[gamedatabase.ROW_NAME], romCollection.name)
 
                 infoLabels = infoLabels={"Title": title,
-                                        "Year" : game.year,
-                                        "Genre" : game.genre,
-                                        "Studio" : game.developer,
-                                        "Plot" : game.plot,
-                                        "PlayCount" : game.playcount,
-                                        "Rating" : game.rating,
-                                        "Votes" : game.votes,
-                                        "Country" : game.region,
-                                        "OriginalTitle" : game.originalTitle}
+                                        "Year" : game[gamedatabase.GAME_year],
+                                        "Genre" : game[gamedatabase.GAME_genre],
+                                        "Studio" : game[gamedatabase.GAME_developer],
+                                        "Plot" : game[gamedatabase.GAME_description],
+                                        "PlayCount" : str(game[gamedatabase.GAME_launchCount]),
+                                        "Rating" : game[gamedatabase.GAME_rating],
+                                        "Votes" : game[gamedatabase.GAME_numVotes],
+                                        "Country" : game[gamedatabase.GAME_region],
+                                        "OriginalTitle" : game[gamedatabase.GAME_originalTitle]}
                 
-                url = "plugin://script.games.rom.collection.browser/?launchid=%s" %game.id
+                url = "plugin://script.games.rom.collection.browser/?launchid=%s" %game[gamedatabase.ROW_ID]
                 
                 listitem = xbmcgui.ListItem(title, iconImage=thumb, thumbnailImage=fanart)
                 listitem.setInfo(type="Video", infoLabels=infoLabels)
