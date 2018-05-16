@@ -10,8 +10,7 @@ rcbAddon = xbmcaddon.Addon(id='script.games.rom.collection.browser')
 rcbAddonPath = rcbAddon.getAddonInfo('path')
 sys.path.append(os.path.join(rcbAddonPath, "resources", "lib"))
 import util, helper
-import gamedatabase
-from gamedatabase import Game, GameDataBase, File, Genre
+from gamedatabase import GameView, GameDataBase, File, Genre
 from config import Config
 
 
@@ -124,10 +123,10 @@ class Widget:
         
         if not platform:
             query = 'Select * From GameView Where launchCount > 0 Order by launchCount desc Limit %s;' %limit
-            games = Game(gdb).getGamesByQueryNoArgs(query)
+            games = GameView(gdb).getGamesByQueryNoArgs(query)
         else:
             query = 'Select * From GameView Where launchCount > 0 AND romCollectionId = ? Order by launchCount desc Limit %s;' %limit
-            games = Game(gdb).getGamesByQuery(query, (platform,))
+            games = GameView(gdb).getGamesByQuery(query, (platform,))
                 
         xbmc.log('RCB widget: most played games: %s' % games)
         
@@ -139,10 +138,10 @@ class Widget:
         
         if not platform:
             query = 'SELECT * FROM GameView ORDER BY RANDOM() LIMIT %s;' %limit
-            games = Game(gdb).getGamesByQueryNoArgs(query)
+            games = GameView(gdb).getGamesByQueryNoArgs(query)
         else:
             query = 'SELECT * FROM GameView WHERE romCollectionId = ? ORDER BY RANDOM() LIMIT %s;' %limit
-            games = Game(gdb).getGamesByQuery(query, (platform,))
+            games = GameView(gdb).getGamesByQuery(query, (platform,))
         
         xbmc.log('RCB widget: random games: %s' % games)
         
@@ -154,10 +153,10 @@ class Widget:
         
         if not platform:
             query = 'SELECT * FROM GameView ORDER BY ID DESC LIMIT %s;' %limit
-            games = Game(gdb).getGamesByQueryNoArgs(query)
+            games = GameView(gdb).getGamesByQueryNoArgs(query)
         else:
             query = 'SELECT * FROM GameView WHERE romCollectionId = ? ORDER BY ID DESC LIMIT %s;' %limit
-            games = Game(gdb).getGamesByQuery(query, (platform,))
+            games = GameView(gdb).getGamesByQuery(query, (platform,))
             
         xbmc.log('RCB widget: recently added games: %s' % games)
         
@@ -169,10 +168,10 @@ class Widget:
         
         if not platform:
             query = 'SELECT * FROM GameView WHERE isFavorite = 1 LIMIT %s;' %limit
-            games = Game(gdb).getGamesByQueryNoArgs(query)
+            games = GameView(gdb).getGamesByQueryNoArgs(query)
         else:
             query = 'SELECT * FROM GameView WHERE isFavorite = 1 AND romCollectionId = ? LIMIT %s;' %limit
-            games = Game(gdb).getGamesByQuery(query, (platform,))
+            games = GameView(gdb).getGamesByQuery(query, (platform,))
             
         xbmc.log('RCB widget: favorite games: %s' % games)
         
@@ -184,7 +183,7 @@ class Widget:
         
         #HACK: as we have no Platform table we get a random platform from table Game
         query = 'Select Distinct romCollectionId From Game Order by RANDOM() LIMIT 1'
-        gameRow = Game(gdb).getObjectByQuery(query, [])
+        gameRow = GameView(gdb).getObjectByQuery(query, [])
         platformId = gameRow[0]
         xbmc.log('RCB widget: random platform: %s' %platformId)
         
@@ -253,9 +252,9 @@ class Widget:
 
             count += 1
             try:
-                xbmc.log("RCB widget: Gathering data for rom no %i: %s" % (count, game[gamedatabase.ROW_NAME]))
+                xbmc.log("RCB widget: Gathering data for rom no %i: %s" % (count, game[GameView.COL_NAME]))
 
-                romCollection = config.romCollections[str(game[gamedatabase.GAME_romCollectionId])]
+                romCollection = config.romCollections[str(game[GameView.COL_romCollectionId])]
 
                 #get artwork that is chosen to be shown in gamelist
                 thumb = helper.get_file_for_control_from_db(
@@ -263,20 +262,20 @@ class Widget:
                 fanart = helper.get_file_for_control_from_db(
                     romCollection.imagePlacingMain.fileTypesForMainViewBackground, game)
 
-                title = '%s (%s)' %(game[gamedatabase.ROW_NAME], romCollection.name)
+                title = '%s (%s)' %(game[GameView.COL_NAME], romCollection.name)
 
                 infoLabels = infoLabels={"Title": title,
-                                        "Year" : game[gamedatabase.GAME_year],
-                                        "Genre" : game[gamedatabase.GAME_genre],
-                                        "Studio" : game[gamedatabase.GAME_developer],
-                                        "Plot" : game[gamedatabase.GAME_description],
-                                        "PlayCount" : str(game[gamedatabase.GAME_launchCount]),
-                                        "Rating" : game[gamedatabase.GAME_rating],
-                                        "Votes" : game[gamedatabase.GAME_numVotes],
-                                        "Country" : game[gamedatabase.GAME_region],
-                                        "OriginalTitle" : game[gamedatabase.GAME_originalTitle]}
+                                        "Year" : game[GameView.COL_year],
+                                        "Genre" : game[GameView.COL_genre],
+                                        "Studio" : game[GameView.COL_developer],
+                                        "Plot" : game[GameView.COL_description],
+                                        "PlayCount" : str(game[GameView.COL_launchCount]),
+                                        "Rating" : game[GameView.COL_rating],
+                                        "Votes" : game[GameView.COL_numVotes],
+                                        "Country" : game[GameView.COL_region],
+                                        "OriginalTitle" : game[GameView.COL_originalTitle]}
                 
-                url = "plugin://script.games.rom.collection.browser/?launchid=%s" %game[gamedatabase.ROW_ID]
+                url = "plugin://script.games.rom.collection.browser/?launchid=%s" %game[GameView.COL_ID]
                 
                 listitem = xbmcgui.ListItem(title, iconImage=thumb, thumbnailImage=fanart)
                 listitem.setInfo(type="Video", infoLabels=infoLabels)
