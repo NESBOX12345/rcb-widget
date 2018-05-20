@@ -1,0 +1,8 @@
+0.2.0 (05/2018)
+~~~~~~~~~~~~~
+  * compatible with RCB 2.2.1
+  
+0.1.0 (04/2018)
+~~~~~~~~~~~~~
+  * initial version
+  * compatible with RCB 2.2.0

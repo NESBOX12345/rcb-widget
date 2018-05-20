@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="plugin.games.rom.collection.browser.widget"
-  version="0.1.0"
+  version="0.2.0"
   name="Rom Collection Browser Widget"
   provider-name="bruny, malte">
   <requires>
@@ -10,14 +10,14 @@
     <!--<import addon="xbmc.gui" version="5.12.0"/>-->
     <import addon="xbmc.python" version="2.25.0"/>
     <import addon="service.rom.collection.browser" version="1.0.0"/>
-	<import addon="script.games.rom.collection.browser" version="2.1.5"/>
+	<import addon="script.games.rom.collection.browser" version="2.2.1"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="default.py">
     <provides>executable game</provides>
   </extension>
   <extension point="xbmc.addon.metadata">    
-    <summary lang="de">Importiert, verwaltet und startet Spiele in XBMC</summary>    
-    <summary lang="en">Import, browse and launch games in XBMC</summary>    
+    <summary lang="de">Zusatz Addon für den Rom Collection Browser. Wird verwendet, um Spiele auf dem Kodi Home Screen anzuzeigen. Nur für Skins, die das Skin shortcuts addon unterstützen.</summary>
+    <summary lang="en">Supplement addon for Rom Collection Browser. Used to add your games to Kodis home screen. Only for skins that support the skin shortcuts addon.</summary>    
     <description lang="de"></description>    
     <description lang="en"></description>
     <language></language>
