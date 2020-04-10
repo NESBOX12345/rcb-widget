@@ -1,6 +1,6 @@
 import os, sys, re
 import urllib
-from urlparse import *
+from urllib.parse import parse_qs, urlparse
 
 import xbmc, xbmcgui, xbmcaddon, xbmcplugin, xbmcvfs
 
@@ -48,7 +48,7 @@ class Widget:
             param = str(arg)
             xbmc.log('RCB widget: param = %s' %param)
         
-        params = parse_qs(urlparse(sys.argv[2]).query)        
+        params = parse_qs(urlparse(sys.argv[2]).query)
         command = self.readParam(params, 'command')
         rcmode = self.readParam(params, 'rcmode')
         platformId = self.readParam(params, 'platformId')
@@ -196,7 +196,7 @@ class Widget:
         param = None
         try:
             param = params[name][0]
-        except Exception, (exc):
+        except Exception as exc:
             xbmc.log('RCB widget: Error = %s' %str(exc))
         
         if param == 'None':
@@ -227,7 +227,7 @@ class Widget:
         parameters = {'command' : command, 'platformId' : platformId, 'rcmode' : rcmode}
         listitem = xbmcgui.ListItem(title)
         listitem.setInfo(type="Program", infoLabels={"Title": title})
-        u = sys.argv[0] +'?' +urllib.urlencode(parameters)
+        u = sys.argv[0] +'?' +urllib.parse.urlencode(parameters)
         xbmcplugin.addDirectoryItem(thisPlugin, u, listitem, isFolder=True)
     
         
@@ -277,12 +277,12 @@ class Widget:
                 
                 url = "plugin://script.games.rom.collection.browser/?launchid=%s" %game[GameView.COL_ID]
                 
-                listitem = xbmcgui.ListItem(title, iconImage=thumb, thumbnailImage=fanart)
+                listitem = xbmcgui.ListItem(title)
                 listitem.setInfo(type="Video", infoLabels=infoLabels)
-                listitem.setArt({"fanart" : fanart})
+                listitem.setArt({"fanart" : fanart, "thumb" : thumb})
                 xbmcplugin.addDirectoryItem(thisPlugin, url, listitem, isFolder=False)
                 
-            except Exception, (exc):
+            except Exception as exc:
                 xbmc.log('RCB widget: Error while getting games for RCB widget: ' + str(exc))
 
         gdb.close()
